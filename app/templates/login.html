@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flowzen ERP - Secure Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg: #F4F6FA;
+            --card: #FFFFFF;
+            --left-bg: #1E2D5A;
+            --left-text: #EEF1FB;
+            --accent: #3B6FE8;
+            --accent-hover: #2d5fd6;
+            --text: #1A2035;
+            --text-secondary: #4A5578;
+            --text-muted: #8896C0;
+            --border: #DDE3F0;
+            --success: #10B981;
+            --danger: #EF4444;
+            --shadow: 0 8px 40px rgba(30, 45, 90, 0.1);
+            --radius: 16px;
+        }
+        
+        [data-theme="dark"] {
+            --bg: #0F1221;
+            --card: #161C2E;
+            --left-bg: #0B0F1C;
+            --left-text: #E8EDFB;
+            --accent: #5E9BF7;
+            --accent-hover: #8BB9FF;
+            --text: #E8EDFB;
+            --text-secondary: #8A97BE;
+            --text-muted: #4A567A;
+            --border: #252D45;
+            --shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            transition: background 0.3s;
+        }
+        
+        .login-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            max-width: 1000px;
+            width: 100%;
+            background: var(--card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+        
+        .theme-toggle:hover {
+            transform: scale(1.05);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        
+        /* Left Panel */
+        .login-left {
+            background: var(--left-bg);
+            padding: 48px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .login-left::before {
+            content: '';
+            position: absolute;
+            width: 280px;
+            height: 280px;
+            background: radial-gradient(circle, rgba(94,155,247,0.12) 0%, transparent 70%);
+            bottom: -60px;
+            right: -80px;
+            pointer-events: none;
+        }
+        
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), #5E9BF7);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .brand-icon svg {
+            width: 22px;
+            height: 22px;
+            color: white;
+        }
+        
+        .brand-text {
+            color: var(--left-text);
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+        
+        .brand-text span {
+            color: #5E9BF7;
+        }
+        
+        .hero h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--left-text);
+            line-height: 1.2;
+            margin-bottom: 16px;
+        }
+        
+        .hero h1 span {
+            background: linear-gradient(135deg, var(--accent), #5E9BF7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p {
+            color: var(--left-text);
+            opacity: 0.6;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+        
+        .roles-list {
+            margin-top: 20px;
+        }
+        
+        .roles-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 12px;
+        }
+        
+        .role-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .role-badge {
+            padding: 5px 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 32px;
+            margin-top: 20px;
+        }
+        
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--left-text);
+        }
+        
+        .stat-label {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.5);
+            margin-top: 4px;
+        }
+        
+        /* Right Panel */
+        .login-right {
+            padding: 48px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .form-header {
+            margin-bottom: 28px;
+        }
+        
+        .form-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        
+        .form-header p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+        
+        .role-selector {
+            margin-bottom: 20px;
+        }
+        
+        .role-selector label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+        
+        .role-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        
+        .role-btn {
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .role-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        
+        .role-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+        
+        .role-btn.span-2 {
+            grid-column: span 2;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--card);
+            color: var(--text);
+            font-family: inherit;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            outline: none;
+        }
+        
+        .form-group input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59,111,232,0.1);
+        }
+        
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 16px 0 24px;
+        }
+        
+        .checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .checkbox input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+        
+        .forgot-link {
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-decoration: none;
+        }
+        
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-login:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+        
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .error-message {
+            display: none;
+            background: rgba(239,68,68,0.1);
+            border-left: 3px solid var(--danger);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 0.8rem;
+            color: var(--danger);
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .security-note {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 24px;
+            padding: 12px;
+            background: var(--bg);
+            border-radius: 8px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+        
+        .security-note i {
+            font-size: 1rem;
+            color: var(--accent);
+        }
+        
+        @media (max-width: 768px) {
+            .login-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .login-left {
+                display: none;
+            }
+            
+            .login-right {
+                padding: 32px 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <button class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i>
+        </button>
+        
+        <div class="login-left">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                    </svg>
+                </div>
+                <div class="brand-text">Flow<span>zen</span></div>
+            </div>
+            
+            <div class="hero">
+                <h1>Smart<br><span>Business</span><br>Flow.</h1>
+                <p>Secure ERP platform with role-based access and complete action logging.</p>
+            </div>
+            
+            <div class="roles-list">
+                <div class="roles-label">Role-based access</div>
+                <div class="role-badges">
+                    <span class="role-badge">Administrateur</span>
+                    <span class="role-badge">Stock Manager</span>
+                    <span class="role-badge">Commercial</span>
+                    <span class="role-badge">HR Manager</span>
+                    <span class="role-badge">Manager</span>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div>
+                    <div class="stat-number">5</div>
+                    <div class="stat-label">Roles</div>
+                </div>
+                <div>
+                    <div class="stat-number">17+</div>
+                    <div class="stat-label">Features</div>
+                </div>
+                <div>
+                    <div class="stat-number">256-bit</div>
+                    <div class="stat-label">Encryption</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="login-right">
+            <div class="form-header">
+                <h2>Sign in to your account</h2>
+                <p>Select your role and enter your credentials</p>
+            </div>
+            
+            <div class="role-selector">
+                <label>Your role</label>
+                <div class="role-buttons" id="roleButtons">
+                    <button class="role-btn" data-role="Administrateur"><i class="fas fa-crown"></i> Administrateur</button>
+                    <button class="role-btn" data-role="RH"><i class="fas fa-users"></i> RH</button>
+                    <button class="role-btn" data-role="Stock"><i class="fas fa-boxes"></i> Stock</button>
+                    <button class="role-btn" data-role="Commercial"><i class="fas fa-chart-line"></i> Commercial</button>
+                    <button class="role-btn span-2" data-role="Manager"><i class="fas fa-tasks"></i> Manager</button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Enter your username" autocomplete="username">
+            </div>
+            
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+            </div>
+            
+            <div class="form-options">
+                <label class="checkbox">
+                    <input type="checkbox" id="rememberMe"> <span>Stay signed in</span>
+                </label>
+                <a href="#" class="forgot-link">Forgot password?</a>
+            </div>
+            
+            <button class="btn-login" id="loginBtn">SIGN IN</button>
+            
+            <div class="error-message" id="errorMessage"></div>
+            
+            <div class="security-note">
+                <i class="fas fa-lock"></i>
+                <span>Session <strong>encrypted 256-bit</strong>. All actions are recorded in the security audit log.</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+        
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+        
+        // Role selection
+        const roleBtns = document.querySelectorAll('.role-btn');
+        let selectedRole = 'Administrateur';
+        
+        roleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                roleBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                selectedRole = btn.dataset.role;
+                document.getElementById('errorMessage').classList.remove('show');
+            });
+        });
+        
+        // Select admin by default
+        document.querySelector('.role-btn[data-role="Administrateur"]').classList.add('active');
+        
+        // Enter key submit
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') document.getElementById('loginBtn').click();
+        });
+        
+        // Login function
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('loginBtn');
+            const errorEl = document.getElementById('errorMessage');
+            
+            errorEl.classList.remove('show');
+            
+            if (!username || !password) {
+                errorEl.textContent = '⚠ Username and password are required';
+                errorEl.classList.add('show');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Authenticating...';
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        role: selectedRole
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    btn.textContent = '✓ Redirecting...';
+                    window.location.href = data.redirect || '/dashboard';
+                } else {
+                    errorEl.textContent = '⚠ ' + (data.error || 'Authentication failed');
+                    errorEl.classList.add('show');
+                    btn.disabled = false;
+                    btn.textContent = 'SIGN IN';
+                }
+            } catch (error) {
+                errorEl.textContent = '⚠ Server error - please try again';
+                errorEl.classList.add('show');
+                btn.disabled = false;
+                btn.textContent = 'SIGN IN';
+            }
+        });
+    </script>
+</body>
+</html>

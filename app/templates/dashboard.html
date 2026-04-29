@@ -1,0 +1,138 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Dashboard - Flowzen ERP{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <div class="page-header">
+        <div>
+            <h1>Dashboard</h1>
+            <p>Welcome back, {{ fullname or 'User' }}! Here's what's happening today.</p>
+        </div>
+        <div class="date-display">
+            <i class="fas fa-calendar"></i>
+            <span id="currentDate"></span>
+        </div>
+    </div>
+    
+    <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-value" id="totalRevenue">0 TND</div>
+            <div class="kpi-label">Total Revenue (Month)</div>
+            <div class="kpi-trend" id="revenueTrend"></div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">📦</div>
+            <div class="kpi-value" id="totalProducts">0</div>
+            <div class="kpi-label">Total Products</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">⚠️</div>
+            <div class="kpi-value" id="lowStockCount">0</div>
+            <div class="kpi-label">Low Stock Alert</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">👥</div>
+            <div class="kpi-value" id="totalUsers">0</div>
+            <div class="kpi-label">Active Users</div>
+        </div>
+    </div>
+    
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-header">
+                <h3>📊 Sales Trend</h3>
+            </div>
+            <div class="card-body">
+                <div id="salesChart" class="chart-container">
+                    <div class="chart-bars" id="chartBars">
+                        <div class="chart-empty">No data available</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h3>🔄 Recent Activity</h3>
+            </div>
+            <div class="card-body">
+                <div class="activity-list" id="recentActivity">
+                    <div class="activity-empty">No recent activity</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3>📋 Recent Sales</h3>
+        </div>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Invoice</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="recentSalesBody">
+                    <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('currentDate').innerText = new Date().toLocaleDateString('fr-FR', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    
+    async function loadDashboard() {
+        try {
+            const response = await fetch('/api/dashboard/stats');
+            const data = await response.json();
+            
+            document.getElementById('totalRevenue').innerHTML = new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND' }).format(data.revenue_month || 0);
+            document.getElementById('totalProducts').innerText = data.products || 0;
+            document.getElementById('lowStockCount').innerText = data.low_stock || 0;
+            document.getElementById('totalUsers').innerText = data.users || 0;
+            
+            if (data.trend && data.trend.length) {
+                const maxRevenue = Math.max(...data.trend.map(t => t.revenue), 1);
+                document.getElementById('chartBars').innerHTML = data.trend.map(day => `
+                    <div class="chart-bar-item">
+                        <div class="chart-bar">
+                            <div class="chart-bar-fill" style="height: ${(day.revenue / maxRevenue) * 100}%"></div>
+                        </div>
+                        <span class="chart-label">${day.date}</span>
+                        <span class="chart-value">${new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND' }).format(day.revenue)}</span>
+                    </div>
+                `).join('');
+            }
+            
+            if (data.recent_sales && data.recent_sales.length) {
+                document.getElementById('recentSalesBody').innerHTML = data.recent_sales.map(sale => `
+                    <tr>
+                        <td>${sale.invoice_number || 'N/A'}</td>
+                        <td>${sale.product_name || 'Unknown'}</td>
+                        <td>${sale.quantity_sold}</td>
+                        <td>${new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND' }).format(sale.total)}</td>
+                        <td>${new Date(sale.sale_date).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Failed to load dashboard:', error);
+        }
+    }
+    
+    loadDashboard();
+    setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}Flowzen ERP{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body data-theme="light">
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                        <path d="M12 22V12M9 10l3-3 3 3"/>
+                    </svg>
+                </div>
+                <div class="logo-text">Flow<span>zen</span></div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">Overview</div>
+                <a href="/dashboard" class="nav-item {% if request.path == '/dashboard' %}active{% endif %}">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Dashboard</span>
+                </a>
+                
+                {% if role in ['Administrateur', 'Stock', 'Manager'] %}
+                <div class="nav-section">Stock</div>
+                <a href="/stock/" class="nav-item {% if request.path.startswith('/stock') %}active{% endif %}">
+                    <i class="fas fa-boxes"></i>
+                    <span>Inventory</span>
+                </a>
+                {% endif %}
+                
+                {% if role in ['Administrateur', 'Commercial', 'Manager'] %}
+                <div class="nav-section">Sales</div>
+                <a href="/sales/" class="nav-item {% if request.path.startswith('/sales') %}active{% endif %}">
+                    <i class="fas fa-chart-simple"></i>
+                    <span>Sales & Reports</span>
+                </a>
+                {% endif %}
+                
+                {% if role in ['Administrateur', 'RH', 'Manager'] %}
+                <div class="nav-section">HR</div>
+                <a href="/hr/" class="nav-item {% if request.path.startswith('/hr') %}active{% endif %}">
+                    <i class="fas fa-users"></i>
+                    <span>HR Management</span>
+                </a>
+                {% endif %}
+                
+                {% if role in ['Administrateur', 'Manager'] %}
+                <div class="nav-section">Management</div>
+                <a href="/manager/" class="nav-item {% if request.path.startswith('/manager') %}active{% endif %}">
+                    <i class="fas fa-tasks"></i>
+                    <span>Tasks</span>
+                </a>
+                {% endif %}
+                
+                {% if role == 'Administrateur' %}
+                <div class="nav-section">Administration</div>
+                <a href="/admin/" class="nav-item {% if request.path.startswith('/admin') %}active{% endif %}">
+                    <i class="fas fa-user-shield"></i>
+                    <span>User Management</span>
+                </a>
+                {% endif %}
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="theme-toggle-btn" id="themeToggle">
+                    <i class="fas fa-sun"></i>
+                    <i class="fas fa-moon" style="display: none;"></i>
+                    <span>Dark Mode</span>
+                </button>
+                <form action="/api/auth/logout" method="POST" style="width: 100%;">
+                    <button type="submit" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Logout</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main">
+            <header class="topbar">
+                <div class="topbar-title">
+                    {% block page_title %}Dashboard{% endblock %}
+                </div>
+                <div class="topbar-user">
+                    <div class="user-avatar" style="background: {{ avatar_color or '#3B6FE8' }}">
+                        {{ (fullname or 'U')[0].upper() }}
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">{{ fullname or 'User' }}</div>
+                        <div class="user-role">{{ role or 'Role' }}</div>
+                    </div>
+                </div>
+            </header>
+            
+            <div class="page-content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    
+    <div id="toast-container" class="toast-container"></div>
+    
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,343 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Task Management - Flowzen ERP{% endblock %}
+
+{% block content %}
+<div class="manager-page">
+    <div class="page-header">
+        <div>
+            <h1>✅ Task Management</h1>
+            <p>Assign and monitor team tasks</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('taskModal')">
+            <i class="fas fa-plus"></i> Assign Task
+        </button>
+    </div>
+    
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon">📋</div>
+            <div class="kpi-value" id="totalTasks">0</div>
+            <div class="kpi-label">Total Tasks</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">⏳</div>
+            <div class="kpi-value" id="pendingTasks">0</div>
+            <div class="kpi-label">Pending</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">✅</div>
+            <div class="kpi-value" id="completedTasks">0</div>
+            <div class="kpi-label">Completed</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-value" id="completionRate">0%</div>
+            <div class="kpi-label">Completion Rate</div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3>✅ All Tasks</h3>
+            <div class="card-actions">
+                <select id="statusFilter" class="form-select" onchange="loadTasks()">
+                    <option value="">All Status</option>
+                    <option value="todo">To Do</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="done">Done</option>
+                </select>
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Assignee</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Due Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tasksTableBody">
+                    <tr><td colspan="6" class="text-center">Loading tasks...
+                    </tr>
+                </thead>
+                <tbody id="tasksTableBody">
+                    <tr><td colspan="6" class="text-center">Loading tasks...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Task Modal -->
+<div class="modal-overlay" id="taskModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="taskModalTitle">Assign Task</h3>
+            <button class="modal-close" onclick="closeModal('taskModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="editTaskId">
+            <div class="form-group">
+                <label>Task Title *</label>
+                <input type="text" id="taskTitle" class="form-control" placeholder="Task title">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="taskDesc" class="form-control" rows="3" placeholder="Task description..."></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Assign To *</label>
+                    <select id="taskAssigneeId" class="form-control"></select>
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select id="taskPriority" class="form-control">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Due Date</label>
+                    <input type="date" id="taskDueDate" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="taskStatus" class="form-control">
+                        <option value="todo">To Do</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('taskModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveTask()">Assign Task</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function loadEmployees() {
+        try {
+            const response = await fetch('/api/hr/employees');
+            const employees = await response.json();
+            const select = document.getElementById('taskAssigneeId');
+            select.innerHTML = employees.map(e => `<option value="${e.id}">${escapeHtml(e.full_name)} (${escapeHtml(e.department || 'N/A')})</option>`).join('');
+        } catch (error) {
+            console.error('Failed to load employees:', error);
+        }
+    }
+    
+    async function loadTasks() {
+        const status = document.getElementById('statusFilter').value;
+        let url = '/api/manager/tasks';
+        if (status) url += `?status=${status}`;
+        
+        try {
+            const response = await fetch(url);
+            const tasks = await response.json();
+            
+            const total = tasks.length;
+            const pending = tasks.filter(t => t.status !== 'done').length;
+            const completed = tasks.filter(t => t.status === 'done').length;
+            const rate = total > 0 ? Math.round(completed / total * 100) : 0;
+            
+            document.getElementById('totalTasks').innerText = total;
+            document.getElementById('pendingTasks').innerText = pending;
+            document.getElementById('completedTasks').innerText = completed;
+            document.getElementById('completionRate').innerText = rate + '%';
+            
+            const tbody = document.getElementById('tasksTableBody');
+            if (tasks.length) {
+                tbody.innerHTML = tasks.map(task => {
+                    let priorityClass = 'priority-medium';
+                    if (task.priority === 'critical') priorityClass = 'priority-critical';
+                    else if (task.priority === 'high') priorityClass = 'priority-high';
+                    else if (task.priority === 'low') priorityClass = 'priority-low';
+                    
+                    let statusBadge = '';
+                    if (task.status === 'done') statusBadge = '<span class="badge badge-success">Done</span>';
+                    else if (task.status === 'in_progress') statusBadge = '<span class="badge badge-info">In Progress</span>';
+                    else statusBadge = '<span class="badge badge-gray">To Do</span>';
+                    
+                    let dueDateClass = task.is_overdue ? 'text-danger' : '';
+                    
+                    return `
+                        <tr>
+                            <td><strong>${escapeHtml(task.title)}</strong><br><small class="text-muted">${escapeHtml(task.description || '')}</small></td>
+                            <td>${escapeHtml(task.assignee_name || 'Unassigned')}</td>
+                            <td><span class="priority-dot ${priorityClass}"></span> ${task.priority}</td>
+                            <td>${statusBadge}</td>
+                            <td class="${dueDateClass}">${task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No deadline'}</td>
+                            <td class="actions">
+                                <button class="btn-icon" onclick="editTask(${task.id})" title="Edit"><i class="fas fa-edit"></i></button>
+                                <button class="btn-icon" onclick="updateTaskStatus(${task.id}, '${task.status === 'done' ? 'todo' : 'done'}')" title="${task.status === 'done' ? 'Reopen' : 'Complete'}">
+                                    <i class="fas ${task.status === 'done' ? 'fa-undo' : 'fa-check-circle'}"></i>
+                                </button>
+                                <button class="btn-icon danger" onclick="deleteTask(${task.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">No tasks found</td></tr>';
+            }
+        } catch (error) {
+            console.error('Failed to load tasks:', error);
+        }
+    }
+    
+    function openAddTaskModal() {
+        document.getElementById('taskModalTitle').innerText = 'Assign Task';
+        document.getElementById('editTaskId').value = '';
+        document.getElementById('taskTitle').value = '';
+        document.getElementById('taskDesc').value = '';
+        document.getElementById('taskPriority').value = 'medium';
+        document.getElementById('taskStatus').value = 'todo';
+        document.getElementById('taskDueDate').value = '';
+        openModal('taskModal');
+    }
+    
+    async function editTask(taskId) {
+        try {
+            const response = await fetch(`/api/manager/tasks`);
+            const tasks = await response.json();
+            const task = tasks.find(t => t.id === taskId);
+            
+            if (task) {
+                document.getElementById('taskModalTitle').innerText = 'Edit Task';
+                document.getElementById('editTaskId').value = task.id;
+                document.getElementById('taskTitle').value = task.title;
+                document.getElementById('taskDesc').value = task.description || '';
+                document.getElementById('taskPriority').value = task.priority;
+                document.getElementById('taskStatus').value = task.status;
+                document.getElementById('taskAssigneeId').value = task.assignee_id;
+                if (task.due_date) {
+                    document.getElementById('taskDueDate').value = task.due_date.split('T')[0];
+                } else {
+                    document.getElementById('taskDueDate').value = '';
+                }
+                openModal('taskModal');
+            }
+        } catch (error) {
+            toast('Error loading task', 'error');
+        }
+    }
+    
+    async function saveTask() {
+        const taskId = document.getElementById('editTaskId').value;
+        const data = {
+            title: document.getElementById('taskTitle').value,
+            description: document.getElementById('taskDesc').value,
+            assignee_id: parseInt(document.getElementById('taskAssigneeId').value),
+            priority: document.getElementById('taskPriority').value,
+            status: document.getElementById('taskStatus').value,
+            due_date: document.getElementById('taskDueDate').value
+        };
+        
+        if (!data.title || !data.assignee_id) {
+            toast('Title and assignee are required', 'error');
+            return;
+        }
+        
+        try {
+            const url = taskId ? `/api/manager/tasks/${taskId}` : '/api/manager/tasks';
+            const method = taskId ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                toast(taskId ? 'Task updated' : 'Task assigned', 'success');
+                closeModal('taskModal');
+                loadTasks();
+            } else {
+                const error = await response.json();
+                toast(error.error || 'Error saving task', 'error');
+            }
+        } catch (error) {
+            toast('Error saving task', 'error');
+        }
+    }
+    
+    async function updateTaskStatus(taskId, newStatus) {
+        try {
+            const response = await fetch(`/api/manager/tasks/${taskId}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            
+            if (response.ok) {
+                toast(newStatus === 'done' ? 'Task completed' : 'Task reopened', 'success');
+                loadTasks();
+            }
+        } catch (error) {
+            toast('Error updating task status', 'error');
+        }
+    }
+    
+    async function deleteTask(taskId) {
+        if (!confirm('Are you sure you want to delete this task?')) return;
+        
+        try {
+            const response = await fetch(`/api/manager/tasks/${taskId}`, { method: 'DELETE' });
+            if (response.ok) {
+                toast('Task deleted', 'success');
+                loadTasks();
+            }
+        } catch (error) {
+            toast('Error deleting task', 'error');
+        }
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    function toast(msg, type) {
+        const container = document.getElementById('toast-container') || (() => {
+            const div = document.createElement('div');
+            div.id = 'toast-container';
+            div.className = 'toast-container';
+            document.body.appendChild(div);
+            return div;
+        })();
+        
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ'}</span><span>${escapeHtml(msg)}</span>`;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOut 0.25s ease forwards';
+            setTimeout(() => toast.remove(), 250);
+        }, 3500);
+    }
+    
+    window.openAddTaskModal = openAddTaskModal;
+    
+    loadEmployees();
+    loadTasks();
+</script>
+{% endblock %}

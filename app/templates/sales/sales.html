@@ -1,0 +1,295 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Sales Management - Flowzen ERP{% endblock %}
+
+{% block content %}
+<div class="sales-page">
+    <div class="page-header">
+        <div>
+            <h1>💰 Sales Management</h1>
+            <p>Track sales and generate reports</p>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('saleModal')">
+            <i class="fas fa-cart-plus"></i> Record Sale
+        </button>
+    </div>
+    
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-value" id="totalRevenue">0 TND</div>
+            <div class="kpi-label">Total Revenue</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">📊</div>
+            <div class="kpi-value" id="transactionCount">0</div>
+            <div class="kpi-label">Transactions</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-icon">📦</div>
+            <div class="kpi-value" id="totalQuantity">0</div>
+            <div class="kpi-label">Items Sold</div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h3>📋 Sales Records</h3>
+            <div class="card-actions">
+                <input type="month" id="monthFilter" class="form-control" style="width: 160px;">
+                <button class="btn btn-secondary" onclick="generateReport()">
+                    <i class="fas fa-chart-line"></i> Monthly Report
+                </button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Invoice</th>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Discount</th>
+                        <th>Total</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="salesTableBody">
+                    <tr><td colspan="7" class="text-center">Loading sales...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Report Modal -->
+    <div class="modal-overlay" id="reportModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h3 id="reportTitle">Monthly Sales Report</h3>
+                <button class="modal-close" onclick="closeModal('reportModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="reportContent"></div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('reportModal')">Close</button>
+                <button class="btn btn-primary" onclick="exportReport()">
+                    <i class="fas fa-download"></i> Export CSV
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sale Modal -->
+<div class="modal-overlay" id="saleModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Record Sale</h3>
+            <button class="modal-close" onclick="closeModal('saleModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Product *</label>
+                <select id="saleProductId" class="form-control"></select>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Quantity *</label>
+                    <input type="number" id="saleQty" class="form-control" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Discount %</label>
+                    <input type="number" id="saleDiscount" class="form-control" value="0" min="0" max="60">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Payment Method</label>
+                <select id="salePaymentMethod" class="form-control">
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal('saleModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="recordSale()">Record Sale</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentReportData = null;
+    
+    async function loadProducts() {
+        try {
+            const response = await fetch('/api/stock/products');
+            const products = await response.json();
+            const select = document.getElementById('saleProductId');
+            select.innerHTML = products.map(p => `<option value="${p.id}">${p.name} (${p.quantity} in stock) - ${formatCurrency(p.selling_price)}</option>`).join('');
+        } catch (error) {
+            console.error('Failed to load products:', error);
+        }
+    }
+    
+    async function loadSales() {
+        const monthFilter = document.getElementById('monthFilter');
+        let url = '/api/sales/';
+        if (monthFilter.value) {
+            const [year, month] = monthFilter.value.split('-');
+            url = `/api/sales/report?year=${year}&month=${month}`;
+        }
+        
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            const sales = data.sales || (data.entries || []);
+            document.getElementById('totalRevenue').innerHTML = formatCurrency(data.total_revenue || 0);
+            document.getElementById('transactionCount').innerText = data.transaction_count || data.entries_count || sales.length;
+            document.getElementById('totalQuantity').innerText = data.total_qty || 0;
+            
+            const tbody = document.getElementById('salesTableBody');
+            if (sales.length) {
+                tbody.innerHTML = sales.map(s => `
+                    <tr>
+                        <td><code>${s.invoice_number || 'N/A'}</code></td>
+                        <td><strong>${escapeHtml(s.product_name || 'Unknown')}</strong></td>
+                        <td>${s.quantity_sold}</td>
+                        <td>${formatCurrency(s.unit_price)}</td>
+                        <td>${s.discount_percent || 0}%</td>
+                        <td class="fw-600">${formatCurrency(s.total)}</td>
+                        <td>${new Date(s.sale_date).toLocaleDateString()}</td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">No sales records found</td></tr>';
+            }
+        } catch (error) {
+            console.error('Failed to load sales:', error);
+        }
+    }
+    
+    async function generateReport() {
+        const monthFilter = document.getElementById('monthFilter');
+        if (!monthFilter.value) {
+            toast('Please select a month first', 'warning');
+            return;
+        }
+        
+        const [year, month] = monthFilter.value.split('-');
+        
+        try {
+            const response = await fetch(`/api/sales/report?year=${year}&month=${month}`);
+            const data = await response.json();
+            currentReportData = data;
+            
+            document.getElementById('reportTitle').innerHTML = `Monthly Sales Report - ${month}/${year}`;
+            document.getElementById('reportContent').innerHTML = `
+                <div class="report-stats">
+                    <div class="stat-item"><strong>Total Revenue:</strong> ${formatCurrency(data.total_revenue)}</div>
+                    <div class="stat-item"><strong>Total Quantity:</strong> ${data.total_quantity}</div>
+                    <div class="stat-item"><strong>Transactions:</strong> ${data.transaction_count}</div>
+                    <div class="stat-item"><strong>Average Order:</strong> ${formatCurrency(data.average_transaction)}</div>
+                </div>
+                <h4>Top Products</h4>
+                <ul class="top-products">
+                    ${data.product_sales.slice(0, 5).map(p => `
+                        <li><strong>${escapeHtml(p.product_name)}</strong>: ${p.quantity} units - ${formatCurrency(p.revenue)}</li>
+                    `).join('')}
+                </ul>
+                <h4>Daily Sales</h4>
+                <div class="daily-sales-chart">
+                    ${data.daily_sales.map(d => `
+                        <div class="daily-bar">
+                            <span class="daily-label">${d.date}</span>
+                            <div class="daily-bar-fill" style="width: ${(d.revenue / data.total_revenue) * 100}%"></div>
+                            <span class="daily-value">${formatCurrency(d.revenue)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            openModal('reportModal');
+        } catch (error) {
+            toast('Error generating report', 'error');
+        }
+    }
+    
+    async function recordSale() {
+        const data = {
+            product_id: parseInt(document.getElementById('saleProductId').value),
+            quantity: parseInt(document.getElementById('saleQty').value),
+            discount_percent: parseFloat(document.getElementById('saleDiscount').value),
+            payment_method: document.getElementById('salePaymentMethod').value
+        };
+        
+        if (!data.product_id || !data.quantity) {
+            toast('Please select a product and quantity', 'error');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/sales/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                toast('Sale recorded successfully', 'success');
+                closeModal('saleModal');
+                loadSales();
+                document.getElementById('saleQty').value = '1';
+                document.getElementById('saleDiscount').value = '0';
+            } else {
+                const error = await response.json();
+                toast(error.error || 'Error recording sale', 'error');
+            }
+        } catch (error) {
+            toast('Error recording sale', 'error');
+        }
+    }
+    
+    function exportReport() {
+        if (!currentReportData) return;
+        
+        let csv = 'Product,Quantity,Revenue\n';
+        currentReportData.product_sales.forEach(p => {
+            csv += `"${p.product_name}",${p.quantity},${p.revenue}\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sales_report_${currentReportData.month}_${currentReportData.year}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast('Report exported', 'success');
+    }
+    
+    function formatCurrency(value) {
+        return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND' }).format(value || 0);
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+    
+    document.getElementById('monthFilter').addEventListener('change', loadSales);
+    
+    loadProducts();
+    loadSales();
+    
+    // Set default month to current
+    const now = new Date();
+    document.getElementById('monthFilter').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+</script>
+{% endblock %}
